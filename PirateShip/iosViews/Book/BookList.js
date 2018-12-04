@@ -15,25 +15,45 @@ import ServiceURL from '../Common/Service'
 export default class BookList extends Component{
     constructor(){
         super();
+        this.ds = new ListView.DataSource({rowHasChanged: (r1, r2)=> r1 !== r2});
         this.state = {
-            books:new ListView.DataSource({
-                rowHasChanged:(row1,row2) => row1 !== row2
-            })
+            books: this.ds.cloneWithRows([]),
+            keywords: 'React'
         }
-        this.fetchData();
-    };
+        this._changeText = this._changeText.bind(this)
+        this._search = this._search.bind(this)
+    }
 
-    fetchData(){
-        fetch(ServiceURL.bookRead)
+    componentDidMount(){
+        this._fetchData();
+    }
+
+
+    _changeText(val){
+        this.setState(() => ({ keywords: val }))
+    }
+
+    _search(){
+        this._fetchData();
+    }
+    //根据关键字查询
+    _fetchData(){
+        const baseURL = ServiceURL.bookSearch + '?count=10&q=' + this.state.keywords;
+
+        fetch(baseURL)
             .then(response => response.json())
             .then(responseData => {
-                console.log(responseData);
+                if(!responseData.books || !responseData.books.length){
+                    return alert('没有相应数据');
+                }
+                const books = responseData.books;
                 this.setState({
-                    books:this.state.books.cloneWithRows(responseData.collections)
-                })
+                    books:this.ds.cloneWithRows(books),
+                    show: true
+                });
             })
             .done();
-    };
+    }
 
     renderBookList(item){
         return(
@@ -41,20 +61,20 @@ export default class BookList extends Component{
                 <View style={styles.itemImage}>
                     <Image
                         style={styles.image}
-                        source={{uri:item.book.images.large}} />
+                        source={{uri:item.images.large}} />
                 </View>
                 <View style={styles.itemContent}>
                     <Text style={styles.itemTitle}>
-                        {item.book.title}
+                        {item.title}
                     </Text>
                     <Text style={styles.itemMeta}>
-                        {item.book.author}
+                        {item.author}
                     </Text>
                     <Text style={styles.itemMeta}>
-                        {item.book.publisher}
+                        {item.publisher}
                     </Text>
                     <Text style={styles.itemScore}>
-                        豆瓣评分：{item.book.rating.average}
+                        豆瓣评分：{item.rating.average}
                     </Text>
                 </View>
             </View>
@@ -65,7 +85,7 @@ export default class BookList extends Component{
         return (
             <ScrollView style={styles.container}>
                 <View style={styles.search}>
-                    <TextInput placeholder="请输入图书的名称" style={styles.input} />
+                    <TextInput placeholder="请输入图书的名称" style={styles.input} onChangeText={this._changeText}/>
                     <TouchableOpacity style={styles.btn} onPress={this._search}>
                         <Text style={styles.btnText}>搜索</Text>
                     </TouchableOpacity>
